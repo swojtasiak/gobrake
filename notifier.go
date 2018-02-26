@@ -15,6 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"net/url"
 )
 
 const defaultAirbrakeHost = "https://api.airbrake.io"
@@ -142,7 +143,16 @@ func (n *Notifier) SendNotice(notice *Notice) (string, error) {
 		return "", err
 	}
 
-	req, err := http.NewRequest("POST", n.createNoticeURL, buf)
+	// Sends application key as 'key' query parameter, to make the library compatible with older Errbit.
+	noticeUrl, err := url.Parse(n.createNoticeURL)
+	if err != nil {
+		return "", errors.New("Wrong notification URL.")
+	}
+	query := noticeUrl.Query()
+	query.Add("key", n.projectKey)
+	noticeUrl.RawQuery = query.Encode()
+
+	req, err := http.NewRequest("POST", noticeUrl.String(), buf)
 	if err != nil {
 		return "", err
 	}
